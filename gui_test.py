@@ -1,12 +1,13 @@
 import sys, time, datetime
 from PySide2.QtWidgets import *
 from PySide2.QtGui import *
-from PySide2.QtCore import Qt, Signal, Slot
+from PySide2.QtCore import Qt, Signal, Slot, QSettings
 from matrix_client.client import MatrixClient
+import traceback
 
 
 class LoginForm(QDialog):
-    loggedIn = Signal(object)
+    loggedIn = Signal(object, str)
 
     def __init__(self, parent=None):
         super(LoginForm, self).__init__(parent)
@@ -31,13 +32,13 @@ class LoginForm(QDialog):
     def doLogin(self):
         client = MatrixClient(self.homeserver.text())
         client.login_with_password(username=self.username.text(), password=self.password.text())
-        self.loggedIn.emit(client)
+        self.loggedIn.emit(client, self.homeserver.text())
 
     def doRegister(self):
         client = MatrixClient(self.homeserver.text())
         client.register_with_password(username=self.username.text(), password=self.password.text())
         client.login_with_password(username=self.username.text(), password=self.password.text())
-        self.loggedIn.emit(client)
+        self.loggedIn.emit(client, self.homeserver.text())
 
 
 class RoomItem(QListWidgetItem):
@@ -50,7 +51,6 @@ class RoomItem(QListWidgetItem):
 
     def messageSent(self, message):
         self.room.send_text(message)
-        print(message)
 
 
 class RoomsList(QListWidget):
@@ -103,7 +103,6 @@ class MessageList(QFrame):
         super(MessageList, self).__init__(parent)
         self.layout = QVBoxLayout()
         for message in messages:
-            print(message)
             self.layout.addWidget(MessageItem(*message, self))
         self.setLayout(self.layout)
 
@@ -140,11 +139,12 @@ class MessageView(QSplitter):
         self.messages = {}
         self.activeRoom = ''
 
-        self.messageList = MessageList([])
+        self.messageList = MessageList([], self)
         self.messageInput = MessageInput()
 
         self.scrollArea = QScrollArea()
         self.scrollArea.setWidget(self.messageList)
+        self.scrollArea.setWidgetResizable(True)
         self.scrollArea.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
         self.setOrientation(Qt.Vertical)
@@ -159,16 +159,19 @@ class MessageView(QSplitter):
         if room not in self.messages:
             self.messages[room] = []
         self.messages[room].append((sender, message, timestamp))
-        self.switchRoom(room)
+        if room == self.activeRoom:
+            self.switchRoom(room)
 
     def switchRoom(self, room):
-        newMessageList = MessageList(self.messages[room])
+        newMessageList = MessageList(self.messages[room], self)
         newScrollArea = QScrollArea()
         newScrollArea.setWidget(newMessageList)
+        newScrollArea.setWidgetResizable(True)
         newScrollArea.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         newScrollArea.verticalScrollBar().setValue(newScrollArea.verticalScrollBar().maximum())
         self.replaceWidget(0, newScrollArea)
-        
+        self.activeRoom = room
+
         self.messageList.deleteLater()
         self.scrollArea.deleteLater()
         self.messageList = newMessageList
@@ -183,21 +186,39 @@ class MainPage(QSplitter):
         self.rooms = RoomsList(self)
         self.messages = MessageView(self)
 
-        self.loginForm = LoginForm()
-        self.loginForm.loggedIn.connect(self.loggedIn)
-        self.loginForm.show()
-
         self.addWidget(self.rooms)
         self.addWidget(self.messages)
 
-        self.client = None
         self.messages.messageSent.connect(self.rooms.messageSent)
 
-    def loggedIn(self, client):
+        self.client = None
+        self.settings = QSettings("Qui", "Qui")
+        self.url = self.settings.value("url")
+        self.token = self.settings.value("token")
+        self.user = self.settings.value("user")
+        invalid = self.url is None or self.url == "" or self.token is None or self.token == "" or self.user is None or self.user == ""
+        if not invalid:
+            try:
+                self.client = MatrixClient(base_url=self.url, token=self.token, user_id=self.user)
+                self.postLogin()
+            except:
+                invalid = True
+        if invalid:
+            self.loginForm = LoginForm()
+            self.loginForm.loggedIn.connect(self.loggedIn)
+            self.loginForm.show()
+
+    def loggedIn(self, client, baseUrl):
         self.client = client
         self.client.add_listener(self.eventCallback)
         self.client.start_listener_thread()
         self.loginForm.close()
+        self.settings.setValue("url", baseUrl)
+        self.settings.setValue("token", client.token)
+        self.settings.setValue("user", client.user_id)
+        self.postLogin()
+
+    def postLogin(self):
         for room, obj in self.client.get_rooms().items():
             self.rooms.addItem(obj.room_id, obj)
             for event in obj.events:
@@ -205,7 +226,6 @@ class MainPage(QSplitter):
 
     def eventCallback(self, event):
         if 'type' in event and 'room_id' in event and 'content' in event and event['type'] == 'm.room.message':
-            print(event)
             self.messageReceived.emit(event['room_id'], event['sender'], event['content'], time.time() - event['unsigned']['age'])
 
 
