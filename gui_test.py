@@ -138,6 +138,7 @@ class MessageView(QSplitter):
         super(MessageView, self).__init__(parent)
         self.messages = {}
         self.activeRoom = ''
+        self.userId = ''
 
         self.messageList = MessageList([], self)
         self.messageInput = MessageInput()
@@ -162,7 +163,7 @@ class MessageView(QSplitter):
         if room == self.activeRoom:
             self.switchRoom(room)
 
-    def switchRoom(self, room):
+    def switchRoom(self, room, *args):
         newMessageList = MessageList(self.messages[room], self)
         newScrollArea = QScrollArea()
         newScrollArea.setWidget(newMessageList)
@@ -210,8 +211,6 @@ class MainPage(QSplitter):
 
     def loggedIn(self, client, baseUrl):
         self.client = client
-        self.client.add_listener(self.eventCallback)
-        self.client.start_listener_thread()
         self.loginForm.close()
         self.settings.setValue("url", baseUrl)
         self.settings.setValue("token", client.token)
@@ -219,12 +218,16 @@ class MainPage(QSplitter):
         self.postLogin()
 
     def postLogin(self):
+        self.messages.userId = self.user
+        self.client.add_listener(self.eventCallback)
+        self.client.start_listener_thread()
         for room, obj in self.client.get_rooms().items():
             self.rooms.addItem(obj.room_id, obj)
             for event in obj.events:
                 self.eventCallback(event)
 
     def eventCallback(self, event):
+        print(event)
         if 'type' in event and 'room_id' in event and 'content' in event and event['type'] == 'm.room.message':
             self.messageReceived.emit(event['room_id'], event['sender'], event['content'], time.time() - event['unsigned']['age'])
 
