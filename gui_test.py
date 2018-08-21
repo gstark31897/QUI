@@ -94,6 +94,9 @@ class MessageItem(QWidget):
         self.layout.addWidget(self.body)
         self.layout.addWidget(self.timestamp)
 
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.layout.setSpacing(0)
+
         self.setLayout(self.layout)
         self.setStyleSheet('background-color:white;');
 
@@ -113,25 +116,68 @@ class MessageInput(QPlainTextEdit):
     def __init__(self, parent=None):
         super(MessageInput, self).__init__(parent)
         self.shouldSend = True
+        self.setMinimumHeight(32)
+        self.setMaximumHeight(32)
+        self.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Minimum)
+        metrics = QFontMetrics(self.font())
+        self.line = metrics.lineSpacing()
+
+    def sendMessage(self):
+        text = self.toPlainText()
+        if len(text) == 0:
+            return
+        self.messageSent.emit(text)
+        self.clear()
+        self.setMaximumHeight(self.line + 14)
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Return and self.shouldSend:
-            text = self.toPlainText()
-            if len(text) == 0:
-                return
-            self.messageSent.emit(text)
-            self.clear()
+            self.sendMessage()
             return
         super(MessageInput, self).keyPressEvent(event)
         if event.key() == Qt.Key_Shift:
             self.shouldSend = False
+        size = (self.toPlainText().count('\n') + 1) * self.line + 14
+        size = min(size, 200)
+        self.setMaximumHeight(size)
 
     def keyReleaseEvent(self, event):
         if event.key() == Qt.Key_Shift:
             self.shouldSend = True
 
 
-class MessageView(QSplitter):
+class MessageViewFooter(QWidget):
+    messageSent = Signal(str)
+
+    def __init__(self, parent=None):
+        super(MessageViewFooter, self).__init__(parent)
+        self.layout = QHBoxLayout(self)
+        self.setMinimumHeight(40)
+        self.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Minimum)
+
+        self.attachmentButton = QPushButton(QIcon.fromTheme('mail-attachment'), '', self)
+        self.attachmentButton.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
+        self.attachmentButton.setMaximumWidth(32)
+        self.layout.addWidget(self.attachmentButton)
+        self.layout.setAlignment(self.attachmentButton, Qt.AlignBottom)
+
+        self.messageInput = MessageInput(self)
+        self.layout.addWidget(self.messageInput)
+        self.layout.setAlignment(self.messageInput, Qt.AlignBottom)
+
+        self.sendButton = QPushButton(QIcon.fromTheme('document-send'), '', self)
+        self.sendButton.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
+        self.sendButton.setMaximumWidth(32)
+        self.layout.addWidget(self.sendButton)
+        self.layout.setAlignment(self.sendButton, Qt.AlignBottom)
+
+        self.setLayout(self.layout)
+
+        self.messageInput.messageSent.connect(self.messageSent)
+        self.sendButton.clicked.connect(self.messageInput.sendMessage)
+
+
+class MessageView(QWidget):
     messageSent = Signal(str)
 
     def __init__(self, parent=None):
@@ -140,17 +186,23 @@ class MessageView(QSplitter):
         self.activeRoom = ''
         self.userId = ''
 
+        self.layout = QVBoxLayout(self)
+
         self.messageList = MessageList([], self)
-        self.messageInput = MessageInput()
+        self.messageList.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.MinimumExpanding)
+
+        self.messageInput = MessageViewFooter()
 
         self.scrollArea = QScrollArea()
         self.scrollArea.setWidget(self.messageList)
         self.scrollArea.setWidgetResizable(True)
         self.scrollArea.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.scrollArea.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.MinimumExpanding)
 
-        self.setOrientation(Qt.Vertical)
-        self.addWidget(self.scrollArea)
-        self.addWidget(self.messageInput)
+        self.layout.addWidget(self.scrollArea)
+        self.layout.addWidget(self.messageInput)
+
+        self.setLayout(self.layout)
 
         parent.messageReceived.connect(self.messageReceived)
         self.messageInput.messageSent.connect(self.messageSent)
@@ -170,7 +222,7 @@ class MessageView(QSplitter):
         newScrollArea.setWidgetResizable(True)
         newScrollArea.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         newScrollArea.verticalScrollBar().setValue(newScrollArea.verticalScrollBar().maximum())
-        self.replaceWidget(0, newScrollArea)
+        self.layout.replaceWidget(self.scrollArea, newScrollArea)
         self.activeRoom = room
 
         self.messageList.deleteLater()
@@ -186,6 +238,11 @@ class MainPage(QSplitter):
         super(MainPage, self).__init__(parent)
         self.rooms = RoomsList(self)
         self.messages = MessageView(self)
+
+        # TODO turn this on some day
+        # self.tray = QSystemTrayIcon(QIcon('icon.png'))
+        # self.tray.show()
+        # self.tray.showMessage('test', 'test')
 
         self.addWidget(self.rooms)
         self.addWidget(self.messages)
@@ -220,6 +277,9 @@ class MainPage(QSplitter):
     def postLogin(self):
         self.messages.userId = self.user
         self.client.add_listener(self.eventCallback)
+        self.client.add_presence_listener(self.presenceCallback)
+        self.client.add_invite_listener(self.inviteCallback)
+        self.client.add_leave_listener(self.leaveCallback)
         self.client.start_listener_thread()
         for room, obj in self.client.get_rooms().items():
             self.rooms.addItem(obj.room_id, obj)
@@ -230,6 +290,15 @@ class MainPage(QSplitter):
         print(event)
         if 'type' in event and 'room_id' in event and 'content' in event and event['type'] == 'm.room.message':
             self.messageReceived.emit(event['room_id'], event['sender'], event['content'], time.time() - event['unsigned']['age'])
+
+    def presenceCallback(self, event):
+        print('presence: {}'.format(event))
+
+    def inviteCallback(self, roomId, state):
+        print('invite: {} {}'.format(roomId, state))
+
+    def leaveCallback(self, roomId, room):
+        print('leave: {} {}'.format(roomId, room))
 
 
 if __name__ == "__main__":
