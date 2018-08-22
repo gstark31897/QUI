@@ -80,38 +80,44 @@ class RoomsList(QListWidget):
             room.messageSent(message)
 
 
-class MessageItem(QWidget):
+class MessageItem(QFrame):
     def __init__(self, sender, message, timestamp, parent=None):
         super(MessageItem, self).__init__(parent)
         self.layout = QVBoxLayout()
 
-        if sender is not None:
-            self.sender = QLabel(sender, self)
-        self.body = QLabel(message['body'], self)
-        self.timestamp = QLabel(datetime.datetime.fromtimestamp(int(timestamp)).strftime('%H:%M:%S'), self)
+        self.userId = sender
 
+        self.sender = QLabel(sender, self)
         self.layout.addWidget(self.sender)
         self.layout.setAlignment(self.sender, Qt.AlignLeft)
 
+        self.body = QLabel(message['body'], self)
         self.layout.addWidget(self.body)
         self.layout.setAlignment(self.sender, Qt.AlignLeft)
 
+        self.timestamp = QLabel(datetime.datetime.fromtimestamp(int(timestamp)).strftime('%H:%M:%S'), self)
         self.layout.addWidget(self.timestamp)
         self.layout.setAlignment(self.timestamp, Qt.AlignRight)
 
-        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.layout.setContentsMargins(8, 4, 8, 4)
         self.layout.setSpacing(0)
 
-        self.setStyleSheet('background:white;');
+        self.setFrameStyle(QFrame.StyledPanel)
+        self.setStyleSheet('border-radius:4px;background:white;');
         self.setLayout(self.layout)
 
 
 class MessageList(QFrame):
-    def __init__(self, messages, parent=None):
+    def __init__(self, userId, messages, parent=None):
         super(MessageList, self).__init__(parent)
         self.layout = QVBoxLayout()
         for message in messages:
-            self.layout.addWidget(MessageItem(*message, self))
+            newItem = MessageItem(*message, self)
+            self.layout.addWidget(newItem)
+            if newItem.userId == userId:
+                self.layout.setAlignment(newItem, Qt.AlignRight)
+            else:
+                self.layout.setAlignment(newItem, Qt.AlignLeft)
         self.setLayout(self.layout)
 
 
@@ -217,7 +223,7 @@ class MessageView(QWidget):
 
         self.roomHeader = MessageViewHeader()
 
-        self.messageList = MessageList([], self)
+        self.messageList = MessageList(self.userId, [], self)
         self.messageList.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.MinimumExpanding)
 
         self.messageInput = MessageViewFooter()
@@ -246,7 +252,7 @@ class MessageView(QWidget):
             self.switchRoom(room)
 
     def switchRoom(self, room):
-        newMessageList = MessageList(self.messages[room], self)
+        newMessageList = MessageList(self.userId, self.messages[room], self)
         newScrollArea = QScrollArea()
         newScrollArea.setWidget(newMessageList)
         newScrollArea.setWidgetResizable(True)
