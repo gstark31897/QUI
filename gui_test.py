@@ -267,6 +267,7 @@ class MessageView(QWidget):
         self.messageList = newMessageList
         self.scrollArea = newScrollArea
 
+
 class MainPage(QSplitter):
     messageReceived = Signal(str, str, object, float)
     switchRoom = Signal(str)
@@ -303,6 +304,19 @@ class MainPage(QSplitter):
             self.loginForm.loggedIn.connect(self.loggedIn)
             self.loginForm.show()
 
+        self.resize(int(self.settings.value("width", "960")), int(self.settings.value("height", "667")))
+        self.move(int(self.settings.value("xpos", "496")), int(self.settings.value("ypos", "193")))
+
+    def resizeEvent(self, event):
+        super(MainPage, self).resizeEvent(event)
+        self.settings.setValue("width", event.size().width())
+        self.settings.setValue("height", event.size().height())
+
+    def moveEvent(self, event):
+        super(MainPage, self).moveEvent(event)
+        self.settings.setValue("xpos", event.pos().x())
+        self.settings.setValue("ypos", event.pos().y())
+
     def loggedIn(self, client, baseUrl):
         self.client = client
         self.loginForm.close()
@@ -336,6 +350,7 @@ class MainPage(QSplitter):
 
     def leaveCallback(self, roomId, room):
         print('leave: {} {}'.format(roomId, room))
+
 
 
 if __name__ == "__main__":
