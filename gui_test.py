@@ -91,14 +91,19 @@ class MessageItem(QWidget):
         self.timestamp = QLabel(datetime.datetime.fromtimestamp(int(timestamp)).strftime('%H:%M:%S'), self)
 
         self.layout.addWidget(self.sender)
+        self.layout.setAlignment(self.sender, Qt.AlignLeft)
+
         self.layout.addWidget(self.body)
+        self.layout.setAlignment(self.sender, Qt.AlignLeft)
+
         self.layout.addWidget(self.timestamp)
+        self.layout.setAlignment(self.timestamp, Qt.AlignRight)
 
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.layout.setSpacing(0)
 
+        self.setStyleSheet('background:white;');
         self.setLayout(self.layout)
-        self.setStyleSheet('background-color:white;');
 
 
 class MessageList(QFrame):
@@ -177,6 +182,28 @@ class MessageViewFooter(QWidget):
         self.sendButton.clicked.connect(self.messageInput.sendMessage)
 
 
+class MessageViewHeader(QWidget):
+    def __init__(self, parent=None):
+        super(MessageViewHeader, self).__init__(parent)
+        self.layout = QHBoxLayout(self)
+        self.setMinimumHeight(40)
+
+        self.roomLabel = QLabel('Room')
+        self.layout.addWidget(self.roomLabel)
+        self.layout.setAlignment(self.roomLabel, Qt.AlignLeft)
+
+        self.settingsButton = QPushButton(QIcon.fromTheme('overflow-menu'), '', self)
+        self.settingsButton.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
+        self.settingsButton.setMaximumWidth(32)
+        self.layout.addWidget(self.settingsButton)
+        self.layout.setAlignment(self.settingsButton, Qt.AlignRight)
+
+        self.setLayout(self.layout)
+
+    def switchRoom(self, room):
+        self.roomLabel.setText(room)
+
+
 class MessageView(QWidget):
     messageSent = Signal(str)
 
@@ -187,6 +214,8 @@ class MessageView(QWidget):
         self.userId = ''
 
         self.layout = QVBoxLayout(self)
+
+        self.roomHeader = MessageViewHeader()
 
         self.messageList = MessageList([], self)
         self.messageList.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.MinimumExpanding)
@@ -199,6 +228,7 @@ class MessageView(QWidget):
         self.scrollArea.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.scrollArea.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.MinimumExpanding)
 
+        self.layout.addWidget(self.roomHeader)
         self.layout.addWidget(self.scrollArea)
         self.layout.addWidget(self.messageInput)
 
@@ -215,7 +245,7 @@ class MessageView(QWidget):
         if room == self.activeRoom:
             self.switchRoom(room)
 
-    def switchRoom(self, room, *args):
+    def switchRoom(self, room):
         newMessageList = MessageList(self.messages[room], self)
         newScrollArea = QScrollArea()
         newScrollArea.setWidget(newMessageList)
@@ -224,6 +254,7 @@ class MessageView(QWidget):
         newScrollArea.verticalScrollBar().setValue(newScrollArea.verticalScrollBar().maximum())
         self.layout.replaceWidget(self.scrollArea, newScrollArea)
         self.activeRoom = room
+        self.roomHeader.switchRoom(room)
 
         self.messageList.deleteLater()
         self.scrollArea.deleteLater()
