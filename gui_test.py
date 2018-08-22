@@ -3,6 +3,7 @@ from PySide2.QtWidgets import *
 from PySide2.QtGui import *
 from PySide2.QtCore import Qt, Signal, Slot, QSettings
 from matrix_client.client import MatrixClient
+from matrix_client.room import Room
 import traceback
 
 
@@ -46,38 +47,52 @@ class RoomItem(QListWidgetItem):
         super(RoomItem, self).__init__(parent)
         self.room = room
         self.room_id = self.room.room_id
+        if self.room.name is None:
+            self.name = self.room.canonical_alias
+        else:
+            self.name = self.room.name
         self.setIcon(QIcon("icon.png"))
         self.setText(self.room.canonical_alias)
 
     def messageSent(self, message):
         self.room.send_text(message)
 
+    def leave(self):
+        self.room.leave_room(self.room_id)
+
 
 class RoomsList(QListWidget):
-    switchRoom = Signal(str)
+    switchRoom = Signal(object)
 
     def __init__(self, parent=None):
         super(RoomsList, self).__init__(parent)
+        self.rooms = {}
         self.messages = {}
 
         parent.messageReceived.connect(self.messageReceived)
         self.switchRoom.connect(parent.switchRoom)
         self.itemSelectionChanged.connect(self.roomSelected)
 
-    def addItem(self, name, obj):
-        super(RoomsList, self).addItem(RoomItem(obj, self))
+    def addItem(self, name, object):
+        self.rooms[name] = RoomItem(object, self)
+        super(RoomsList, self).addItem(self.rooms[name])
         self.messages[name] = []
 
     def messageReceived(self, room, message):
-        self.messages[room].append(message)
+        self.messages[room.room_id].append(message)
 
     def roomSelected(self):
         for room in self.selectedItems():
-            self.switchRoom.emit(room.room_id)
+            self.switchRoom.emit(room)
 
     def messageSent(self, message):
         for room in self.selectedItems():
             room.messageSent(message)
+
+    def roomLeft(self, room):
+        self.takeItem(self.row(self.rooms[room.room_id]))
+        del self.rooms[room.room_id]
+        del self.messages[room.room_id]
 
 
 class MessageItem(QFrame):
@@ -189,34 +204,43 @@ class MessageViewFooter(QWidget):
 
 
 class MessageViewHeader(QWidget):
+    roomLeft = Signal(object)
+
     def __init__(self, parent=None):
         super(MessageViewHeader, self).__init__(parent)
         self.layout = QHBoxLayout(self)
         self.setMinimumHeight(40)
+        self.room = None
 
         self.roomLabel = QLabel('Room')
         self.layout.addWidget(self.roomLabel)
         self.layout.setAlignment(self.roomLabel, Qt.AlignLeft)
 
-        self.settingsButton = QPushButton(QIcon.fromTheme('overflow-menu'), '', self)
-        self.settingsButton.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
-        self.settingsButton.setMaximumWidth(32)
-        self.layout.addWidget(self.settingsButton)
-        self.layout.setAlignment(self.settingsButton, Qt.AlignRight)
+        self.settingsMenuBar = QMenuBar()
+        self.settingsMenuBar.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
+        settingsMenu = self.settingsMenuBar.addMenu(QIcon.fromTheme('overflow-menu'), '')
+        settingsMenu.addAction('Leave Room').triggered.connect(self.leaveRoom)
+        self.layout.addWidget(self.settingsMenuBar)
+        self.layout.setAlignment(self.settingsMenuBar, Qt.AlignRight)
 
         self.setLayout(self.layout)
 
     def switchRoom(self, room):
-        self.roomLabel.setText(room)
+        self.roomLabel.setText(room.name)
+        self.room = room
+
+    def leaveRoom(self):
+        self.roomLeft.emit(self.room)
 
 
 class MessageView(QWidget):
     messageSent = Signal(str)
+    roomLeft = Signal(object)
 
     def __init__(self, parent=None):
         super(MessageView, self).__init__(parent)
         self.messages = {}
-        self.activeRoom = ''
+        self.activeRoom = None
         self.userId = ''
 
         self.layout = QVBoxLayout(self)
@@ -241,18 +265,20 @@ class MessageView(QWidget):
         self.setLayout(self.layout)
 
         parent.messageReceived.connect(self.messageReceived)
+        self.roomHeader.roomLeft.connect(self.roomLeft)
+        self.roomHeader.roomLeft.connect(self.leaveRoom)
         self.messageInput.messageSent.connect(self.messageSent)
         parent.switchRoom.connect(self.switchRoom)
 
     def messageReceived(self, room, sender, message, timestamp):
-        if room not in self.messages:
-            self.messages[room] = []
-        self.messages[room].append((sender, message, timestamp))
-        if room == self.activeRoom:
+        if room.room_id not in self.messages:
+            self.messages[room.room_id] = []
+        self.messages[room.room_id].append((sender, message, timestamp))
+        if self.activeRoom is not None and room.room_id == self.activeRoom.room_id:
             self.switchRoom(room)
 
     def switchRoom(self, room):
-        newMessageList = MessageList(self.userId, self.messages[room], self)
+        newMessageList = MessageList(self.userId, self.messages[room.room_id], self)
         newScrollArea = QScrollArea()
         newScrollArea.setWidget(newMessageList)
         newScrollArea.setWidgetResizable(True)
@@ -267,10 +293,14 @@ class MessageView(QWidget):
         self.messageList = newMessageList
         self.scrollArea = newScrollArea
 
+    def leaveRoom(self, room):
+        if room.room_id in self.messages:
+            self.messages[room.room_id]
+
 
 class MainPage(QSplitter):
-    messageReceived = Signal(str, str, object, float)
-    switchRoom = Signal(str)
+    messageReceived = Signal(object, str, object, float)
+    switchRoom = Signal(object)
 
     def __init__(self, parent=None):
         super(MainPage, self).__init__(parent)
@@ -286,6 +316,8 @@ class MainPage(QSplitter):
         self.addWidget(self.messages)
 
         self.messages.messageSent.connect(self.rooms.messageSent)
+        self.messages.roomLeft.connect(self.rooms.roomLeft)
+        self.messages.roomLeft.connect(self.roomLeft)
 
         self.client = None
         self.settings = QSettings("Qui", "Qui")
@@ -337,10 +369,13 @@ class MainPage(QSplitter):
             for event in obj.events:
                 self.eventCallback(event)
 
+    def roomLeft(self, room):
+        self.client.api.leave_room(room.room_id)
+
     def eventCallback(self, event):
-        print(event)
         if 'type' in event and 'room_id' in event and 'content' in event and event['type'] == 'm.room.message':
-            self.messageReceived.emit(event['room_id'], event['sender'], event['content'], time.time() - event['unsigned']['age'])
+            room = Room(self.client, event['room_id'])
+            self.messageReceived.emit(room, event['sender'], event['content'], time.time() - event['unsigned']['age'])
 
     def presenceCallback(self, event):
         print('presence: {}'.format(event))
