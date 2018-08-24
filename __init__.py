@@ -19,18 +19,26 @@ class Application(QApplication):
 
         self.tray = QSystemTrayIcon(QIcon(self.iconPath))
         self.tray.show()
-        self.tray.showMessage('test', 'test')
+        #self.tray.showMessage('test', 'test')
+        self.tray.activated.connect(self.showWindow)
 
         self.menu = QMenu()
-        self.menu.addAction('Minimize').triggered.connect(self.minimize)
         self.menu.addAction('Quit').triggered.connect(self.quit)
         self.tray.setContextMenu(self.menu)
 
-        self.window = MainWindow()
-        self.window.show()
+        self.window = None
+        self.showWindow(None)
 
-    def minimize(self):
-        self.window.setWindowState(Qt.WindowMinimized)
+    def showWindow(self, reason):
+        if self.window is None:
+            self.window = MainWindow()
+            self.window.windowClosed.connect(self.windowClosed)
+            self.window.show()
+        else:
+            self.window.showNormal()
+
+    def windowClosed(self):
+        self.window = None
 
     def quit(self):
         sys.exit(0)

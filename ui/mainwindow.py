@@ -16,6 +16,8 @@ class MainWindow(QSplitter):
     messageReceived = Signal(object, str, object, float)
     switchRoom = Signal(object)
 
+    windowClosed = Signal()
+
     def __init__(self, parent=None):
         super(MainWindow, self).__init__(parent)
         self.rooms = RoomList(self)
@@ -35,11 +37,11 @@ class MainWindow(QSplitter):
         self.user = self.settings.value("user")
         invalid = self.url is None or self.url == "" or self.token is None or self.token == "" or self.user is None or self.user == ""
         if not invalid:
-            #try:
+            try:
                 self.client = MatrixClient(base_url=self.url, token=self.token, user_id=self.user)
                 self.postLogin()
-            #except:
-            #    invalid = True
+            except:
+                invalid = True
         if invalid:
             self.loginForm = LoginForm()
             self.loginForm.loggedIn.connect(self.loggedIn)
@@ -57,6 +59,10 @@ class MainWindow(QSplitter):
         super(MainWindow, self).moveEvent(event)
         self.settings.setValue("xpos", event.pos().x())
         self.settings.setValue("ypos", event.pos().y())
+
+    def closeEvent(self, event):
+        self.windowClosed.emit()
+        event.accept()
 
     def loggedIn(self, client, baseUrl):
         self.client = client
