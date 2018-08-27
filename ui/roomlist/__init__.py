@@ -28,19 +28,12 @@ class RoomList(QListWidget):
     def __init__(self, parent=None):
         super(RoomList, self).__init__(parent)
         self.rooms = {}
-        self.messages = {}
 
-        parent.messageReceived.connect(self.messageReceived)
-        self.switchRoom.connect(parent.switchRoom)
         self.itemSelectionChanged.connect(self.roomSelected)
 
-    def addItem(self, name, object):
-        self.rooms[name] = RoomItem(object, self)
-        super(RoomList, self).addItem(self.rooms[name])
-        self.messages[name] = []
-
-    def messageReceived(self, room, message):
-        self.messages[room.room_id].append(message)
+    def addItem(self, room):
+        self.rooms[room.name] = RoomItem(room, self)
+        super(RoomList, self).addItem(self.rooms[room.name])
 
     def roomSelected(self):
         for room in self.selectedItems():
@@ -50,8 +43,13 @@ class RoomList(QListWidget):
         for room in self.selectedItems():
             room.messageSent(message)
 
-    def roomLeft(self, room):
+    def receiveMessage(self, room, sender, content, timestamp):
+        pass # TODO show a notification
+
+    def leaveRoom(self, room):
         self.takeItem(self.row(self.rooms[room.room_id]))
         del self.rooms[room.room_id]
-        del self.messages[room.room_id]
+
+    def joinRoom(self, room):
+        self.addItem(room)
 

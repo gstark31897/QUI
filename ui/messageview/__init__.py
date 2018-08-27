@@ -80,13 +80,14 @@ class MessageView(QWidget):
 
         self.setLayout(self.layout)
 
-        parent.messageReceived.connect(self.messageReceived)
         self.header.roomLeft.connect(self.roomLeft)
         self.header.roomLeft.connect(self.leaveRoom)
         self.messageInput.messageSent.connect(self.messageSent)
-        parent.switchRoom.connect(self.switchRoom)
 
-    def messageReceived(self, room, sender, message, timestamp):
+    def login(self, userId):
+        self.userId = userId
+
+    def receiveMessage(self, room, sender, message, timestamp):
         if room.room_id not in self.messages:
             self.messages[room.room_id] = []
         self.messages[room.room_id].append((sender, message, timestamp))
@@ -112,3 +113,7 @@ class MessageView(QWidget):
     def leaveRoom(self, room):
         if room.room_id in self.messages:
             self.messages[room.room_id]
+
+    def joinRoom(self, room):
+        self.messages[room.room_id] = []
+
