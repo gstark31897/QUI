@@ -4,7 +4,7 @@ from PySide2.QtCore import Qt, Signal, Slot, QSettings
 
 
 class Header(QWidget):
-    roomLeft = Signal(object)
+    leaveRoom = Signal(object)
 
     def __init__(self, parent=None):
         super(Header, self).__init__(parent)
@@ -19,7 +19,7 @@ class Header(QWidget):
         self.settingsMenuBar = QMenuBar()
         self.settingsMenuBar.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
         settingsMenu = self.settingsMenuBar.addMenu(QIcon.fromTheme('overflow-menu'), '')
-        settingsMenu.addAction('Leave Room').triggered.connect(self.leaveRoom)
+        settingsMenu.addAction('Leave Room').triggered.connect(self.roomLeft)
         self.layout.addWidget(self.settingsMenuBar)
         self.layout.setAlignment(self.settingsMenuBar, Qt.AlignRight)
 
@@ -29,6 +29,6 @@ class Header(QWidget):
         self.roomLabel.setText(room.name)
         self.room = room
 
-    def leaveRoom(self):
-        self.roomLeft.emit(self.room)
+    def roomLeft(self):
+        self.leaveRoom.emit(self.room)
 

@@ -9,6 +9,8 @@ from .footer import Footer
 
 
 class MessageItem(QFrame):
+    leaveRoom = Signal(object)
+
     def __init__(self, sender, message, timestamp, parent=None):
         super(MessageItem, self).__init__(parent)
         self.layout = QVBoxLayout()
@@ -51,7 +53,7 @@ class MessageList(QFrame):
 
 class MessageView(QWidget):
     messageSent = Signal(str)
-    roomLeft = Signal(object)
+    leaveRoom = Signal(object)
 
     def __init__(self, parent=None):
         super(MessageView, self).__init__(parent)
@@ -62,11 +64,10 @@ class MessageView(QWidget):
         self.layout = QVBoxLayout(self)
 
         self.header = Header()
+        self.layout.addWidget(self.header)
 
         self.messageList = MessageList(self.userId, [], self)
         self.messageList.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.MinimumExpanding)
-
-        self.messageInput = Footer()
 
         self.scrollArea = QScrollArea()
         self.scrollArea.setWidget(self.messageList)
@@ -74,15 +75,15 @@ class MessageView(QWidget):
         self.scrollArea.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.scrollArea.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.MinimumExpanding)
 
-        self.layout.addWidget(self.header)
         self.layout.addWidget(self.scrollArea)
-        self.layout.addWidget(self.messageInput)
+
+        self.footer = Footer()
+        self.layout.addWidget(self.footer)
 
         self.setLayout(self.layout)
 
-        self.header.roomLeft.connect(self.roomLeft)
-        self.header.roomLeft.connect(self.leaveRoom)
-        self.messageInput.messageSent.connect(self.messageSent)
+        self.header.leaveRoom.connect(self.leaveRoom)
+        self.footer.messageSent.connect(self.messageSent)
 
     def login(self, userId):
         self.userId = userId
@@ -110,7 +111,7 @@ class MessageView(QWidget):
         self.messageList = newMessageList
         self.scrollArea = newScrollArea
 
-    def leaveRoom(self, room):
+    def roomLeft(self, room):
         if room.room_id in self.messages:
             self.messages[room.room_id]
 

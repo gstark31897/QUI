@@ -45,8 +45,6 @@ class Application(QApplication):
 
         # setup signals
         self.messageReceived.connect(self.receiveMessage)
-        self.roomJoined.connect(self.joinRoom)
-        self.roomLeft.connect(self.leaveRoom)
 
         # show the window
         self.window = None
@@ -78,9 +76,10 @@ class Application(QApplication):
             # setup signals
             self.loggedIn.connect(self.window.login)
             self.messageReceived.connect(self.window.receiveMessage)
-            self.roomLeft.connect(self.window.leaveRoom)
+            self.roomLeft.connect(self.window.roomLeft)
             self.roomJoined.connect(self.window.joinRoom)
             self.window.createRoom.connect(self.createRoom)
+            self.window.leaveRoom.connect(self.leaveRoom)
             # show it
             self.window.show()
         else:
@@ -120,12 +119,15 @@ class Application(QApplication):
             self.messageReceived.emit(room, event['sender'], event['content'], time.time() - event['unsigned']['age'])
 
     def presenceCallback(self, event):
+        return
         print('presence: {}'.format(event))
 
     def inviteCallback(self, roomId, state):
+        return
         print('invite: {} {}'.format(roomId, state))
 
     def leaveCallback(self, roomId, room):
+        return
         print('leave: {} {}'.format(roomId, room))
 
     def receiveMessage(self, room, sender, content, timestamp):
@@ -134,7 +136,9 @@ class Application(QApplication):
                 self.tray.showMessage(sender, content['body'])
 
     def leaveRoom(self, room):
+        print('leaving room')
         self.client.api.leave_room(room.room_id)
+        self.roomLeft.emit(room)
 
     def joinRoom(self, room):
         room = self.client.join_room(room.room_id)

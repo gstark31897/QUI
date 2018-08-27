@@ -48,8 +48,9 @@ class RoomList(QWidget):
         self.footer.createRoom.connect(self.createRoom)
 
     def addItem(self, room):
-        self.rooms[room.name] = RoomItem(room, self.list)
-        self.list.addItem(self.rooms[room.name])
+        newRoom = RoomItem(room, self.list)
+        self.rooms[newRoom.room_id] = newRoom
+        self.list.addItem(self.rooms[newRoom.room_id])
 
     def selectedItems(self):
         return self.list.selectedItems()
@@ -65,8 +66,8 @@ class RoomList(QWidget):
     def receiveMessage(self, room, sender, content, timestamp):
         pass # TODO show a notification
 
-    def leaveRoom(self, room):
-        self.list.takeItem(self.row(self.rooms[room.room_id]))
+    def roomLeft(self, room):
+        self.list.takeItem(self.list.row(self.rooms[room.room_id]))
         del self.rooms[room.room_id]
 
     def joinRoom(self, room):

@@ -19,6 +19,7 @@ class MainWindow(QSplitter):
     roomLeft = Signal(object)
     roomJoined = Signal(object)
 
+    leaveRoom = Signal(object)
     createRoom = Signal(str)
 
 
@@ -31,7 +32,6 @@ class MainWindow(QSplitter):
         self.addWidget(self.messages)
 
         self.messages.messageSent.connect(self.rooms.messageSent)
-        self.messages.roomLeft.connect(self.roomLeft)
 
         self.settings = QSettings('Qui', 'Qui')
 
@@ -40,6 +40,9 @@ class MainWindow(QSplitter):
         self.move(int(self.settings.value("xpos", "496")), int(self.settings.value("ypos", "193")))
         self.rooms.switchRoom.connect(self.switchRoom)
         self.rooms.createRoom.connect(self.createRoom)
+        self.messages.leaveRoom.connect(self.leaveRoom)
+        self.roomLeft.connect(self.rooms.roomLeft)
+        self.roomLeft.connect(self.messages.roomLeft)
 
     def resizeEvent(self, event):
         super(MainWindow, self).resizeEvent(event)
@@ -64,10 +67,6 @@ class MainWindow(QSplitter):
 
     def switchRoom(self, room):
         self.messages.switchRoom(room)
-
-    def leaveRoom(self, room):
-        self.messages.leaveRoom(room)
-        self.rooms.leaveRoom(room)
 
     def joinRoom(self, room):
         self.messages.joinRoom(room)
