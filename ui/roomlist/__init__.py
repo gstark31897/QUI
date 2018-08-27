@@ -1,6 +1,6 @@
 from PySide2.QtWidgets import *
 from PySide2.QtGui import *
-from PySide2.QtCore import Qt, Signal, Slot, QSettings
+from PySide2.QtCore import Qt, Signal, Slot, QSettings, QCoreApplication
 
 from .footer import Footer
 
@@ -23,6 +23,11 @@ class RoomItem(QListWidgetItem):
     def leave(self):
         self.room.leave_room(self.room_id)
 
+    def update(self, key, value):
+        if key == 'canonical_alias':
+            self.canonical_alias = value
+            self.setText(self.room.canonical_alias)
+
 
 class RoomList(QWidget):
     switchRoom = Signal(object)
@@ -37,6 +42,7 @@ class RoomList(QWidget):
         self.layout = QVBoxLayout(self)
 
         self.list = QListWidget(self)
+        self.list.setSortingEnabled(True)
         self.layout.addWidget(self.list)
 
         self.footer = Footer(self)
@@ -70,6 +76,11 @@ class RoomList(QWidget):
         self.list.takeItem(self.list.row(self.rooms[room.room_id]))
         del self.rooms[room.room_id]
 
-    def joinRoom(self, room):
+    def roomJoined(self, room):
         self.addItem(room)
+
+    def roomUpdated(self, roomId, key, value):
+        if roomId in self.rooms:
+            self.rooms[roomId].update(key, value)
+            self.repaint()
 

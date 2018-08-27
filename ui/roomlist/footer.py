@@ -39,6 +39,5 @@ class Footer(QWidget):
         self.setLayout(self.layout)
 
     def roomCreateAccepted(self):
-        print('creating room')
         self.createRoom.emit(self.createRoomForm.roomName())
 

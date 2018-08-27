@@ -115,7 +115,10 @@ class MessageView(QWidget):
         if room.room_id in self.messages:
             self.messages[room.room_id]
 
-    def joinRoom(self, room):
+    def roomJoined(self, room):
         self.messages[room.room_id] = []
         self.switchRoom(room)
+
+    def roomUpdated(self, roomId, key, value):
+        pass
 

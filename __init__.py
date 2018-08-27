@@ -20,6 +20,7 @@ class Application(QApplication):
 
     roomSwitched = Signal(object)
     roomJoined = Signal(object)
+    roomUpdated = Signal(str, str, str)
     roomLeft = Signal(object)
     roomInvited = Signal(object)
     
@@ -77,7 +78,8 @@ class Application(QApplication):
             self.loggedIn.connect(self.window.login)
             self.messageReceived.connect(self.window.receiveMessage)
             self.roomLeft.connect(self.window.roomLeft)
-            self.roomJoined.connect(self.window.joinRoom)
+            self.roomJoined.connect(self.window.roomJoined)
+            self.roomUpdated.connect(self.window.roomUpdated)
             self.window.createRoom.connect(self.createRoom)
             self.window.leaveRoom.connect(self.leaveRoom)
             # show it
@@ -117,6 +119,8 @@ class Application(QApplication):
         if 'type' in event and 'room_id' in event and 'content' in event and event['type'] == 'm.room.message':
             room = Room(self.client, event['room_id'])
             self.messageReceived.emit(room, event['sender'], event['content'], time.time() - event['unsigned']['age'])
+        if 'type' in event and 'room_id' in event and 'content' in event and event['type'] == 'm.room.canonical_alias':
+            self.roomUpdated.emit(event['room_id'], 'canonical_alias', event['content']['alias'])
 
     def presenceCallback(self, event):
         return
@@ -136,7 +140,6 @@ class Application(QApplication):
                 self.tray.showMessage(sender, content['body'])
 
     def leaveRoom(self, room):
-        print('leaving room')
         self.client.api.leave_room(room.room_id)
         self.roomLeft.emit(room)
 
