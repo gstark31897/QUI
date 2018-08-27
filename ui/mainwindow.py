@@ -17,6 +17,10 @@ class MainWindow(QSplitter):
 
     switchRoom = Signal(object)
     roomLeft = Signal(object)
+    roomJoined = Signal(object)
+
+    createRoom = Signal(str)
+
 
     def __init__(self, parent=None):
         super(MainWindow, self).__init__(parent)
@@ -35,6 +39,7 @@ class MainWindow(QSplitter):
         self.resize(int(self.settings.value("width", "960")), int(self.settings.value("height", "667")))
         self.move(int(self.settings.value("xpos", "496")), int(self.settings.value("ypos", "193")))
         self.rooms.switchRoom.connect(self.switchRoom)
+        self.rooms.createRoom.connect(self.createRoom)
 
     def resizeEvent(self, event):
         super(MainWindow, self).resizeEvent(event)

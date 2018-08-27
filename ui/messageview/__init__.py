@@ -116,4 +116,5 @@ class MessageView(QWidget):
 
     def joinRoom(self, room):
         self.messages[room.room_id] = []
+        self.switchRoom(room)
 

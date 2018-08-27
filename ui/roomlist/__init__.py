@@ -2,6 +2,8 @@ from PySide2.QtWidgets import *
 from PySide2.QtGui import *
 from PySide2.QtCore import Qt, Signal, Slot, QSettings
 
+from .footer import Footer
+
 
 class RoomItem(QListWidgetItem):
     def __init__(self, room, parent=None):
@@ -22,32 +24,49 @@ class RoomItem(QListWidgetItem):
         self.room.leave_room(self.room_id)
 
 
-class RoomList(QListWidget):
+class RoomList(QWidget):
     switchRoom = Signal(object)
+
+    roomCreated = Signal(object)
+    createRoom = Signal(str)
 
     def __init__(self, parent=None):
         super(RoomList, self).__init__(parent)
         self.rooms = {}
 
-        self.itemSelectionChanged.connect(self.roomSelected)
+        self.layout = QVBoxLayout(self)
+
+        self.list = QListWidget(self)
+        self.layout.addWidget(self.list)
+
+        self.footer = Footer(self)
+        self.layout.addWidget(self.footer)
+
+        self.setLayout(self.layout)
+
+        self.list.itemSelectionChanged.connect(self.roomSelected)
+        self.footer.createRoom.connect(self.createRoom)
 
     def addItem(self, room):
-        self.rooms[room.name] = RoomItem(room, self)
-        super(RoomList, self).addItem(self.rooms[room.name])
+        self.rooms[room.name] = RoomItem(room, self.list)
+        self.list.addItem(self.rooms[room.name])
+
+    def selectedItems(self):
+        return self.list.selectedItems()
 
     def roomSelected(self):
         for room in self.selectedItems():
             self.switchRoom.emit(room)
 
     def messageSent(self, message):
-        for room in self.selectedItems():
+        for room in self.list.selectedItems():
             room.messageSent(message)
 
     def receiveMessage(self, room, sender, content, timestamp):
         pass # TODO show a notification
 
     def leaveRoom(self, room):
-        self.takeItem(self.row(self.rooms[room.room_id]))
+        self.list.takeItem(self.row(self.rooms[room.room_id]))
         del self.rooms[room.room_id]
 
     def joinRoom(self, room):

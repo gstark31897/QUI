@@ -51,6 +51,7 @@ class Footer(QWidget):
         self.attachmentButton = QPushButton(QIcon.fromTheme('mail-attachment'), '', self)
         self.attachmentButton.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
         self.attachmentButton.setMaximumWidth(32)
+        #self.attachmentButton.setFlat(True)
         self.layout.addWidget(self.attachmentButton)
         self.layout.setAlignment(self.attachmentButton, Qt.AlignBottom)
 
@@ -61,6 +62,7 @@ class Footer(QWidget):
         self.sendButton = QPushButton(QIcon.fromTheme('document-send'), '', self)
         self.sendButton.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
         self.sendButton.setMaximumWidth(32)
+        #self.sendButton.setFlat(True)
         self.layout.addWidget(self.sendButton)
         self.layout.setAlignment(self.sendButton, Qt.AlignBottom)
 

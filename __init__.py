@@ -80,6 +80,7 @@ class Application(QApplication):
             self.messageReceived.connect(self.window.receiveMessage)
             self.roomLeft.connect(self.window.leaveRoom)
             self.roomJoined.connect(self.window.joinRoom)
+            self.window.createRoom.connect(self.createRoom)
             # show it
             self.window.show()
         else:
@@ -136,5 +137,10 @@ class Application(QApplication):
         self.client.api.leave_room(room.room_id)
 
     def joinRoom(self, room):
-        self.client.api.join_room(room.room_id)
+        room = self.client.join_room(room.room_id)
+        self.roomJoined.emit(room)
+
+    def createRoom(self, roomId):
+        room = self.client.create_room(roomId)
+        self.roomJoined.emit(room)
 
