@@ -4,7 +4,8 @@ from PySide2.QtCore import Qt, Signal, Slot, QSettings
 
 
 class CreateRoomForm(QDialog):
-    loggedIn = Signal(object, str)
+    createRoom = Signal(str)
+    joinRoom = Signal(str)
 
     def __init__(self, parent=None):
         super(CreateRoomForm, self).__init__(parent)
@@ -20,14 +21,25 @@ class CreateRoomForm(QDialog):
         self.createButton = QPushButton(QIcon.fromTheme('list-add'), 'Create Room')
         self.layout.addWidget(self.createButton)
 
+        self.joinButton = QPushButton(QIcon.fromTheme('join'), 'Join Room')
+        self.layout.addWidget(self.joinButton)
+
         self.cancelButton = QPushButton(QIcon.fromTheme('dialog-cancel'), 'Cancel')
         self.layout.addWidget(self.cancelButton)
 
         self.setLayout(self.layout)
 
-        self.createButton.clicked.connect(self.accept)
+        self.createButton.clicked.connect(self.createRoomClicked)
+        self.joinButton.clicked.connect(self.joinRoomClicked)
         self.cancelButton.clicked.connect(self.reject)
 
-    def roomName(self):
-        return self.roomNameEdit.text()
+    def createRoomClicked(self):
+        self.createRoom.emit(self.roomNameEdit.text())
+        self.roomNameEdit.clear()
+        self.accept()
+
+    def joinRoomClicked(self):
+        self.joinRoom.emit(self.roomNameEdit.text())
+        self.roomNameEdit.clear()
+        self.accept()
 

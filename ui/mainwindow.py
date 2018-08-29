@@ -21,6 +21,7 @@ class MainWindow(QSplitter):
     roomUpdated = Signal(str, str, str)
 
     leaveRoom = Signal(object)
+    joinRoom = Signal(str)
     createRoom = Signal(str)
 
 
@@ -42,6 +43,7 @@ class MainWindow(QSplitter):
         self.rooms.switchRoom.connect(self.switchRoom)
         self.rooms.createRoom.connect(self.createRoom)
         self.messages.leaveRoom.connect(self.leaveRoom)
+        self.rooms.joinRoom.connect(self.joinRoom)
         self.roomLeft.connect(self.rooms.roomLeft)
         self.roomLeft.connect(self.messages.roomLeft)
         self.roomJoined.connect(self.rooms.roomJoined)

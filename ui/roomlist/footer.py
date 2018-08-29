@@ -7,6 +7,7 @@ from ..forms.createroomform import CreateRoomForm
 
 class Footer(QWidget):
     createRoom = Signal(str)
+    joinRoom = Signal(str)
 
     def __init__(self, parent=None):
         super(Footer, self).__init__(parent)
@@ -15,7 +16,8 @@ class Footer(QWidget):
         self.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Minimum)
 
         self.createRoomForm = CreateRoomForm(self)
-        self.createRoomForm.accepted.connect(self.roomCreateAccepted)
+        self.createRoomForm.createRoom.connect(self.createRoom)
+        self.createRoomForm.joinRoom.connect(self.joinRoom)
 
         self.createRoomButton = QPushButton(QIcon.fromTheme('list-add'), '')
         self.createRoomButton.setFlat(True)
@@ -37,7 +39,4 @@ class Footer(QWidget):
         self.layout.setAlignment(self.settingsButton, Qt.AlignBottom)
 
         self.setLayout(self.layout)
-
-    def roomCreateAccepted(self):
-        self.createRoom.emit(self.createRoomForm.roomName())
 

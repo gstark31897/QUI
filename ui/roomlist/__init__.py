@@ -10,10 +10,11 @@ class RoomItem(QListWidgetItem):
         super(RoomItem, self).__init__(parent)
         self.room = room
         self.room_id = self.room.room_id
-        if self.room.name is None:
+        self.name = self.room.name
+        if self.name is None:
             self.name = self.room.canonical_alias
-        else:
-            self.name = self.room.name
+        if self.name is None:
+            self.name = self.room.room_id
         self.setIcon(QIcon("icon.png"))
         self.setText(self.room.canonical_alias)
 
@@ -32,7 +33,7 @@ class RoomItem(QListWidgetItem):
 class RoomList(QWidget):
     switchRoom = Signal(object)
 
-    roomCreated = Signal(object)
+    joinRoom = Signal(str)
     createRoom = Signal(str)
 
     def __init__(self, parent=None):
@@ -52,6 +53,7 @@ class RoomList(QWidget):
 
         self.list.itemSelectionChanged.connect(self.roomSelected)
         self.footer.createRoom.connect(self.createRoom)
+        self.footer.joinRoom.connect(self.joinRoom)
 
     def addItem(self, room):
         newRoom = RoomItem(room, self.list)
@@ -75,12 +77,15 @@ class RoomList(QWidget):
     def roomLeft(self, room):
         self.list.takeItem(self.list.row(self.rooms[room.room_id]))
         del self.rooms[room.room_id]
+        self.repaint()
 
     def roomJoined(self, room):
         self.addItem(room)
+        self.list.repaint()
 
     def roomUpdated(self, roomId, key, value):
         if roomId in self.rooms:
             self.rooms[roomId].update(key, value)
+            self.list.sortItems()
             self.repaint()
 
